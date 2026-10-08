@@ -1,0 +1,18 @@
+package com.lercs;
+
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import java.util.List;
+
+@Configuration
+class SeedData {
+ @Bean CommandLineRunner seed(Users users,Categories categories,Resources resources,Shelters shelters,Hospitals hospitals,Emergencies emergencies,Responders responders,Histories histories,Announcements announcements,PasswordEncoder encoder){return args->{
+  List.of("Medical Emergency","Fire","Flood","Road Accident","Natural Disaster","Missing Person","Building Collapse","Electrical Emergency","Rescue Required","Food/Water Emergency","Other").forEach(n->{if(categories.findByName(n).isEmpty())categories.save(new EmergencyCategory(n));});
+  if(users.count()==0){String password=System.getenv("LERCS_SEED_PASSWORD");if(password!=null&&!password.isBlank()){users.save(new User("admin@lercs.local",encoder.encode(password),"Development Admin","",Role.ADMIN));users.save(new User("coordinator@lercs.local",encoder.encode(password),"Development Coordinator","",Role.COORDINATOR));User responderUser=users.save(new User("responder@lercs.local",encoder.encode(password),"Development Responder","",Role.RESPONDER));User citizen=users.save(new User("citizen@lercs.local",encoder.encode(password),"Development Citizen","",Role.CITIZEN));ResponderProfile p=new ResponderProfile();p.user=responderUser;p.skills="First Aid, CPR, Driving";p.experience="Community responder";p.availability=Availability.AVAILABLE;p.verification=Verification.VERIFIED;responders.save(p);if(emergencies.count()==0){Emergency e=new Emergency();e.reporter=citizen;e.category=categories.findByName("Medical Emergency").orElseThrow();e.title="Medical assistance needed";e.description="A community member needs a first aid assessment. Coordinator follow-up requested.";e.priority=Priority.HIGH;e.peopleAffected=1;e.address="12 Main Street";e.city="Local Area";e.status=EmergencyStatus.VERIFIED;e=emergencies.save(e);histories.save(new StatusHistory(e,null,EmergencyStatus.REPORTED,citizen,"Development sample report"));histories.save(new StatusHistory(e,EmergencyStatus.REPORTED,EmergencyStatus.VERIFIED,users.findByEmail("coordinator@lercs.local").orElseThrow(),"Sample incident verified"));}if(announcements.count()==0){Announcement a=new Announcement();a.title="Community coordination center is active";a.message="Check this board and your notifications for local coordination updates. For immediate danger, contact official emergency services.";a.createdBy=users.findByEmail("coordinator@lercs.local").orElseThrow();a.priority=Priority.MEDIUM;a.targetAudience="ALL";announcements.save(a);}}}
+  if(resources.count()==0){Resource r=new Resource();r.name="First Aid Kits";r.category="Medical";r.quantity=40;r.availableQuantity=40;r.unit="kits";r.location="Central Store";resources.save(r);Resource w=new Resource();w.name="Drinking Water";w.category="Supplies";w.quantity=120;w.availableQuantity=120;w.unit="cases";w.location="Central Store";resources.save(w);}
+  if(shelters.count()==0){Shelter s=new Shelter();s.name="Community Hall Shelter";s.address="12 Main Street";s.city="Local Area";s.capacity=100;s.occupiedCapacity=28;s.facilities="Water, first aid, accessible washroom";shelters.save(s);}
+  if(hospitals.count()==0){Hospital h=new Hospital();h.name="General Hospital";h.address="1 Health Avenue";h.city="Local Area";h.emergencyAvailable=true;h.bedCapacity=150;h.availableBeds=32;h.ambulanceAvailable=true;h.services="Emergency, trauma, general medicine";hospitals.save(h);}
+ };}
+}
